@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ADIS Book Borrowing System</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            margin-top: 40px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            color: #4CAF50;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .form label {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .form input {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            margin-top: 5px;
+        }
+
+        .form input:focus {
+            border-color: #4CAF50;
+            outline: none;
+        }
+
+        .btn {
+            padding: 12px;
+            font-size: 1.2rem;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .reset {
+            background-color: #f44336;
+        }
+
+        .reset:hover {
+            background-color: #d32f2f;
+        }
+
+        section {
+            margin-top: 30px;
+        }
+
+        #borrowedBooksList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #borrowedBooksList li {
+            background-color: #f1f1f1;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #borrowedBooksList li button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #borrowedBooksList li button:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ADIS Book Borrowing System</h1>
+        </header>
+
+        <form id="borrowForm" class="form">
+            <label for="bookTitle">Book Title:</label>
+            <input type="text" id="bookTitle" required>
+
+            <label for="borrowerName">Borrower's Name:</label>
+            <input type="text" id="borrowerName" required>
+
+            <button type="submit" class="btn">Borrow Book</button>
+            <button type="button" id="resetButton" class="btn reset">Reset Data</button>
+        </form>
+
+        <section>
+            <h3>Borrowed Books:</h3>
+            <ul id="borrowedBooksList"></ul>
+        </section>
+    </div>
+
+    <script>
+        // Function to calculate how long the book has been borrowed
+        function getBorrowDuration(borrowDate) {
+            const borrowedDate = new Date(borrowDate);
+            const currentDate = new Date();
+            const diffTime = currentDate - borrowedDate;
+            const daysBorrowed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            return daysBorrowed;
+        }
+
+        // Load borrowed books from localStorage
+        function loadBorrowedBooks() {
+            const books = JSON.parse(localStorage.getItem('borrowedBooks')) || [];
+            const booksList = document.getElementById('borrowedBooksList');
+            booksList.innerHTML = '';  // Clear the list first
+            books.forEach((book, index) => {
+                const listItem = document.createElement('li');
+                const borrowDuration = getBorrowDuration(book.borrowDate);
+                const returnButton = document.createElement('button');
+                returnButton.textContent = 'Mark as Returned';
+                returnButton.onclick = function() { markAsReturned(index); };
+
+                if (book.name) {
+                    listItem.textContent = `${book.title} borrowed by ${book.name} - Borrowed for ${borrowDuration} day(s)`;
+                } else {
+                    listItem.textContent = `${book.title} is returned.`;
+                }
+
+                listItem.appendChild(returnButton);
+                booksList.appendChild(listItem);
+            });
+        }
+
+        // Mark a book as returned
+        function markAsReturned(index) {
+            const books = JSON.parse(localStorage.getItem('borrowedBooks')) || [];
+            // Set name to empty to mark the book as returned
+            books[index].name = '';
+            localStorage.setItem('borrowedBooks', JSON.stringify(books));
+            loadBorrowedBooks();
+        }
+
+        // Handle form submission
+        document.getElementById('borrowForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const bookTitle = document.getElementById('bookTitle').value;
+            const borrowerName = document.getElementById('borrowerName').value;
+
+            // Check if both fields are filled
+            if (bookTitle === '' || borrowerName === '') {
+                alert('Please fill in both fields to borrow a book.');
+                return;
+            }
+
+            const borrowDate = new Date().toISOString(); // Store current date as borrow date
+
+            // Retrieve stored data and add new book
+            const books = JSON.parse(localStorage.getItem('borrowedBooks')) || [];
+            books.push({ title: bookTitle, name: borrowerName, borrowDate: borrowDate });
+
+            // Save updated data to localStorage
+            localStorage.setItem('borrowedBooks', JSON.stringify(books));
+
+            // Clear the form
+            document.getElementById('borrowForm').reset();
+
+            // Reload the borrowed books list
+            loadBorrowedBooks();
+        });
+
+        // Reset data button with a warning
+        document.getElementById('resetButton').addEventListener('click', function() {
+            // Confirm reset action
+            const confirmation = confirm('Are you sure you want to reset all borrowed books data?');
+            if (confirmation) {
+                localStorage.removeItem('borrowedBooks');
+                loadBorrowedBooks();
+            }
+        });
+
+        // Initialize the page by loading existing borrowed books
+        loadBorrowedBooks();
+    </script>
+</body>
+</html>
