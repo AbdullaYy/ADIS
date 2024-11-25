@@ -128,6 +128,9 @@
             <label for="borrowerName">Borrower's Name:</label>
             <input type="text" id="borrowerName" required>
 
+            <label for="returnDate">Return Date:</label>
+            <input type="date" id="returnDate" required>
+
             <button type="submit" class="btn">Borrow Book</button>
             <button type="button" id="resetButton" class="btn reset">Reset Data</button>
         </form>
@@ -139,15 +142,6 @@
     </div>
 
     <script>
-        // Function to calculate how long the book has been borrowed
-        function getBorrowDuration(borrowDate) {
-            const borrowedDate = new Date(borrowDate);
-            const currentDate = new Date();
-            const diffTime = currentDate - borrowedDate;
-            const daysBorrowed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-            return daysBorrowed;
-        }
-
         // Load borrowed books from localStorage
         function loadBorrowedBooks() {
             const books = JSON.parse(localStorage.getItem('borrowedBooks')) || [];
@@ -155,16 +149,22 @@
             booksList.innerHTML = '';  // Clear the list first
             books.forEach((book, index) => {
                 const listItem = document.createElement('li');
-                const borrowDuration = getBorrowDuration(book.borrowDate);
+
+                const borrowDate = new Date(book.borrowDate);
+                const returnDate = new Date(book.returnDate);
+                const currentDate = new Date();
+                let overdueText = '';
+
+                if (currentDate > returnDate) {
+                    const overdueDays = Math.floor((currentDate - returnDate) / (1000 * 60 * 60 * 24));
+                    overdueText = ` (Overdue by ${overdueDays} day(s))`;
+                }
+
+                listItem.textContent = `${book.title} borrowed by ${book.name} - Return by ${book.returnDate}${overdueText}`;
+
                 const returnButton = document.createElement('button');
                 returnButton.textContent = 'Mark as Returned';
-                returnButton.onclick = function() { markAsReturned(index); };
-
-                if (book.name) {
-                    listItem.textContent = `${book.title} borrowed by ${book.name} - Borrowed for ${borrowDuration} day(s)`;
-                } else {
-                    listItem.textContent = `${book.title} is returned.`;
-                }
+                returnButton.onclick = function () { markAsReturned(index); };
 
                 listItem.appendChild(returnButton);
                 booksList.appendChild(listItem);
@@ -174,22 +174,21 @@
         // Mark a book as returned
         function markAsReturned(index) {
             const books = JSON.parse(localStorage.getItem('borrowedBooks')) || [];
-            // Set name to empty to mark the book as returned
-            books[index].name = '';
+            books.splice(index, 1); // Remove the book from the list
             localStorage.setItem('borrowedBooks', JSON.stringify(books));
             loadBorrowedBooks();
         }
 
         // Handle form submission
-        document.getElementById('borrowForm').addEventListener('submit', function(event) {
+        document.getElementById('borrowForm').addEventListener('submit', function (event) {
             event.preventDefault();
 
             const bookTitle = document.getElementById('bookTitle').value;
             const borrowerName = document.getElementById('borrowerName').value;
+            const returnDate = document.getElementById('returnDate').value;
 
-            // Check if both fields are filled
-            if (bookTitle === '' || borrowerName === '') {
-                alert('Please fill in both fields to borrow a book.');
+            if (bookTitle === '' || borrowerName === '' || returnDate === '') {
+                alert('Please fill in all fields to borrow a book.');
                 return;
             }
 
@@ -197,7 +196,7 @@
 
             // Retrieve stored data and add new book
             const books = JSON.parse(localStorage.getItem('borrowedBooks')) || [];
-            books.push({ title: bookTitle, name: borrowerName, borrowDate: borrowDate });
+            books.push({ title: bookTitle, name: borrowerName, returnDate: returnDate, borrowDate: borrowDate });
 
             // Save updated data to localStorage
             localStorage.setItem('borrowedBooks', JSON.stringify(books));
@@ -210,7 +209,7 @@
         });
 
         // Reset data button with a warning
-        document.getElementById('resetButton').addEventListener('click', function() {
+        document.getElementById('resetButton').addEventListener('click', function () {
             // Confirm reset action
             const confirmation = confirm('Are you sure you want to reset all borrowed books data?');
             if (confirmation) {
